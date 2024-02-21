@@ -46,7 +46,7 @@ class Conversation:
 
     def add_system_message(self):
         self.messages.append(Conversation.Message(
-            self.start_timestamp, SYSTEM_MESSAGE, 'system'))
+            self.start_timestamp, AZURE_OPENAI_SYSTEM_MESSAGE, 'system'))
 
     def get_messages(self) -> list[dict[str, str]]:
         return [{'role': m.role, 'content': m.content} for m in self.messages]
