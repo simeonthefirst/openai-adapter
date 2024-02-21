@@ -2,13 +2,13 @@
 This Azure Function provides as an interface for submitting messages Azure-hosted OpenAI model and receiving answers. 
 
 It generates ongoing conversations by buffering past messages and it historizes past conversations in an Azure Storage Table. 
-Additionally, it contains the system message for the ai model, and adds it to every start of a new conversation.
+Additionally, it adds the system message for the OpenAI model to every start of a new conversation.
 
 
 
 ## How to set it up
 
-- Create Azure Storage Container with a Table and Azure OpenAI Model
+- Create Azure Storage Container with a table and Azure OpenAI Model.
 - Publish this Code to the Azure Function via ```func azure functionapp publish {your-function-name}```
 - Set enviroment variables for Azure OpenAI connection:
     - ```AZURE_STORAGE_CONNECTION_STRING```
@@ -58,4 +58,4 @@ OR
 
 ##### Notes 
 - Make sure to replace **`{your_function_api_key}`** in the request example with your actual Azure Function API key.
-- The **`user_id for managing conversation contexts is currently set to a static value. There is no differentiation between diffrent clients jet!
+- The **`user_id`** for managing conversation contexts is currently set to a static value. There is no differentiation between diffrent clients jet!
