@@ -9,14 +9,17 @@ from azure.data.tables import TableClient
 
 AZURE_STORAGE_CONNECTION_STRING = os.getenv(
     "AZURE_STORAGE_CONNECTION_STRING") or ""
+AZURE_STORAGE_TABLE_NAME = os.getenv(
+    "AZURE_STORAGE_TABLE_NAME") or ""  # "conversationhistory"
+
 AZURE_OPENAI_KEY = os.getenv("AZURE_OPENAI_KEY") or ""
 AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT") or ""
-
-AZURE_OPENAI_VERSION = "2023-12-01-preview"
-SYSTEM_MESSAGE = "You are a helpful assistant."
-
-AZURE_STORAGE_TABLE_NAME = "conversationhistory"
-
+AZURE_OPENAI_VERSION = os.getenv(
+    "AZURE_OPENAI_VERSION") or ""  # "2023-12-01-preview"
+AZURE_OPENAI_DEPLOYMENTNAME = os.getenv(
+    "AZURE_OPENAI_DEPLOYMENTNAME") or ""  # 'smn-gpt35'
+AZURE_OPENAI_SYSTEM_MESSAGE = os.getenv(
+    "AZURE_OPENAI_SYSTEM_MESSAGE") or ""  # "You are a helpful assistant."
 
 table_client = TableClient.from_connection_string(
     conn_str=AZURE_STORAGE_CONNECTION_STRING, table_name=AZURE_STORAGE_TABLE_NAME)
@@ -122,12 +125,21 @@ def save_conversation(convo: Conversation, user_id: str):
 def askopenai(req: func.HttpRequest) -> func.HttpResponse:
     try:
         logging.info('Python HTTP askopenai function processed a request.')
-        # logging.debug(f"Received request with headers: {req.headers}")
-        # logging.debug(f"Request params: {req.params}")
+        logging.debug(f"Received request with headers: {req.headers}")
+        logging.debug(f"Request params: {req.params}")
 
+        # Extract 'question' parameter from the HTTP request. This is what the user wants to ask.
         question = req.params.get('question')
+
+        # Extract 'conversation_timeout' parameter from the request, with a default of 300 seconds (5 minutes).
+        # This defines the maximum time between the last answer and this question. If it gets exeeded, a new conversation is started.
         conversation_timeout = req.params.get(
             'conversation_timeout', 300)  # Default timeout 5 minutes =300 sek
+
+        # Extract a 'only_answer' parameter from the request.
+        # Switch to decide if response body is only answer test or conversation json.
+        only_answer: bool = req.params.get(
+            'only_answer', "true").lower() == 'true'
 
         if not question:
             logging.warning("No question parameter provided in the request.")
@@ -142,11 +154,9 @@ def askopenai(req: func.HttpRequest) -> func.HttpResponse:
 
         client = AzureOpenAI(
             api_key=os.getenv("AZURE_OPENAI_KEY"),
-            api_version="2023-12-01-preview",
+            api_version=AZURE_OPENAI_VERSION,
             azure_endpoint=AZURE_OPENAI_ENDPOINT
         )
-
-        deployment_name = 'smn-gpt35'
 
         convo.add_message(question, 'user')
 
@@ -154,7 +164,7 @@ def askopenai(req: func.HttpRequest) -> func.HttpResponse:
             logging.debug(
                 f"Sending message to Azure OpenAI: {convo.get_messages()}")
             response = client.chat.completions.create(
-                model=deployment_name,
+                model=AZURE_OPENAI_DEPLOYMENTNAME,
                 messages=convo.get_messages()  # type: ignore
             )
             answer = response.choices[0].message.content \
@@ -165,11 +175,14 @@ def askopenai(req: func.HttpRequest) -> func.HttpResponse:
                     Error calling Azure OpenAI: {e}", status_code=500)
 
         convo.add_message(answer, 'assistant')
-
         save_conversation(convo, user_id)
 
-        return func.HttpResponse(str(convo.get_messages()), status_code=200,
-                                 headers={"Content-Type": "text/plain"})
+        if only_answer:
+            return func.HttpResponse(answer, status_code=200,
+                                     headers={"Content-Type": "text/plain"})
+        else:
+            return func.HttpResponse(str(convo.get_messages()), status_code=200,
+                                     headers={"Content-Type": "application/json"})
     except Exception as e:
         logging.error(f"Error: {e}")
         return func.HttpResponse(f"Error processing your request: {e}", status_code=500)
