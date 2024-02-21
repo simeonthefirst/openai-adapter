@@ -1,5 +1,5 @@
 # openai-adapter
-This Azure-Function provides as an interface for submitting messages Azure-hosted OpenAI model and receiving answers. 
+This Azure Function provides as an interface for submitting messages Azure-hosted OpenAI model and receiving answers. 
 
 It generates ongoing conversations by buffering past messages and it historizes past conversations in an Azure Storage Table. 
 Additionally, it contains the system message for the ai model, and adds it to every start of a new conversation.
@@ -8,9 +8,9 @@ Additionally, it contains the system message for the ai model, and adds it to ev
 
 ## How to set it up
 
-- Create Azure storage Container and Azure OpenAI Model
-- Publish to azure via ```func azure functionapp publish smn-openai-adapter```
-- Set enviroment varanles for azure open ai connection:
+- Create Azure Storage Container with a Table and Azure OpenAI Model
+- Publish this Code to the Azure Function via ```func azure functionapp publish {your-function-name}```
+- Set enviroment variables for Azure OpenAI connection:
     - ```AZURE_STORAGE_CONNECTION_STRING```
     - ```AZURE_STORAGE_TABLE_NAME```
     - ```AZURE_OPENAI_KEY```
@@ -48,11 +48,12 @@ GET /api/askopenai?question=What%20is%20the%20capital%20of%20France&conversation
 OR
 
 - **Content-Type: `application/json`** (when **`only_answer=false`**)
-- **Body:** A JSON representation of the entire - conversation, including the latest question and answer.
+- **Body:** A JSON representation of the entire conversation, including the latest question and answer.
 
 ##### Error Responses
 
 - **400 Bad Request:** Returned if the question parameter is missing.
+- **401 Unauthorized:** Returned if the code parameter is missing, invalid or if the authorisation settings in the Azure Function are not as expected.
 - **500 Internal Server Error:** Returned if there's an error processing the request, including issues with calling the Azure OpenAI service or other internal errors.
 
 ##### Notes 
