@@ -45,6 +45,8 @@ class Conversation:
         self.messages: list[Conversation.Message] = []
 
     def add_system_message(self):
+        AZURE_OPENAI_SYSTEM_MESSAGE = os.getenv(
+        "AZURE_OPENAI_SYSTEM_MESSAGE") or ""  # "You are a helpful assistant."
         self.messages.append(Conversation.Message(
             self.start_timestamp, AZURE_OPENAI_SYSTEM_MESSAGE, 'system'))
 
@@ -124,6 +126,7 @@ def save_conversation(convo: Conversation, user_id: str):
 @app.route(route="askopenai")
 def askopenai(req: func.HttpRequest) -> func.HttpResponse:
     try:
+                
         logging.info('Python HTTP askopenai function processed a request.')
         logging.debug(f"Received request with headers: {req.headers}")
         logging.debug(f"Request params: {req.params}")
