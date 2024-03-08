@@ -177,12 +177,15 @@ def askopenai(req: func.HttpRequest) -> func.HttpResponse:
         convo.add_message(answer, 'assistant')
         save_conversation(convo, user_id)
 
+        response_text = ""
         if only_answer:
-            return func.HttpResponse(answer, status_code=200,
-                                     headers={"Content-Type": "text/plain"})
+            response_text = answer
         else:
-            return func.HttpResponse(str(convo.get_messages()), status_code=200,
-                                     headers={"Content-Type": "application/json"})
+            response_text = str(convo.get_messages())
+
+        logging.info(f'Response will be sent: {response_text}')
+        return func.HttpResponse(response_text, status_code=200,
+                                 headers={"Content-Type": "application/json"})
     except Exception as e:
         logging.error(f"Error: {e}")
         return func.HttpResponse(f"Error processing your request: {e}", status_code=500)
