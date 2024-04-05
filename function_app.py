@@ -26,6 +26,12 @@ table_client = TableClient.from_connection_string(
 app = func.FunctionApp(http_auth_level=func.AuthLevel.FUNCTION)
 
 
+AZURE_AISEARCH_INDEX = os.getenv(
+    "AZURE_AISEARCH_INDEX") or ""  # nt-marketing-markdown
+AZURE_AISEARCH_KEY = os.getenv("AZURE_AISEARCH_KEY") or ""
+AZURE_AISEARCH_ENDPOINT = os.getenv("AZURE_AISEARCH_ENDPOINT") or ""
+
+
 class Conversation:
     class Message:
         def __init__(self, timestamp: datetime, content: str, role: str):
@@ -46,7 +52,7 @@ class Conversation:
 
     def add_system_message(self):
         AZURE_OPENAI_SYSTEM_MESSAGE = os.getenv(
-        "AZURE_OPENAI_SYSTEM_MESSAGE") or ""  # "You are a helpful assistant."
+            "AZURE_OPENAI_SYSTEM_MESSAGE") or ""  # "You are a helpful assistant."
         self.messages.append(Conversation.Message(
             self.start_timestamp, AZURE_OPENAI_SYSTEM_MESSAGE, 'system'))
 
@@ -126,7 +132,7 @@ def save_conversation(convo: Conversation, user_id: str):
 @app.route(route="askopenai")
 def askopenai(req: func.HttpRequest) -> func.HttpResponse:
     try:
-                
+
         logging.info('Python HTTP askopenai function processed a request.')
         logging.debug(f"Received request with headers: {req.headers}")
         logging.debug(f"Request params: {req.params}")
@@ -158,7 +164,7 @@ def askopenai(req: func.HttpRequest) -> func.HttpResponse:
         client = AzureOpenAI(
             api_key=os.getenv("AZURE_OPENAI_KEY"),
             api_version=AZURE_OPENAI_VERSION,
-            azure_endpoint=AZURE_OPENAI_ENDPOINT
+            azure_endpoint=AZURE_OPENAI_ENDPOINT,
         )
 
         convo.add_message(question, 'user')
@@ -168,7 +174,17 @@ def askopenai(req: func.HttpRequest) -> func.HttpResponse:
                 f"Sending message to Azure OpenAI: {convo.get_messages()}")
             response = client.chat.completions.create(
                 model=AZURE_OPENAI_DEPLOYMENTNAME,
-                messages=convo.get_messages()  # type: ignore
+                messages=convo.get_messages(),
+                # extra_body={
+                #     "dataSources": [
+                #         {
+                #             "type": "AzureCognitiveSearch",
+                #             "parameters": {
+                #                 "endpoint": AZURE_AISEARCH_ENDPOINT,
+                #                 "key": AZURE_AISEARCH_KEY,
+                #                 "indexName": AZURE_AISEARCH_INDEX
+                #             }
+                #         }]}
             )
             answer = response.choices[0].message.content \
                 if response.choices else "No answer available."
@@ -192,13 +208,3 @@ def askopenai(req: func.HttpRequest) -> func.HttpResponse:
     except Exception as e:
         logging.error(f"Error: {e}")
         return func.HttpResponse(f"Error processing your request: {e}", status_code=500)
-
-
-@app.function_name(name="http_trigger")
-@app.route(auth_level=func.AuthLevel.FUNCTION)
-def test_function(req: func.HttpRequest) -> func.HttpResponse:
-    logging.info('Python HTTP trigger function processed a request.')
-    return func.HttpResponse(
-        f"This HTTP triggered function executed successfully.{req}",
-        status_code=200
-    )
